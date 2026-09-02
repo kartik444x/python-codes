@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+*.prof
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Secrets / Environment
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.cert
+
+# TTS Model weights (download separately, never commit)
+models/
+*.pt
+*.pth
+*.onnx
+*.bin
+*.safetensors
+
+# Generated audio (runtime output)
+generated_audio/
+*.wav
+*.mp3
+*.ogg
+
+# Logs
+logs/
+*.log
+
+# Database files (dev SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Alembic (keep versions, ignore compiled)
+alembic/__pycache__/
+
+# Docker
+.dockerignore
+
+# Benchmark results
+benchmark_results/
+*.json.bak

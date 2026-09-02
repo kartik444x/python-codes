@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+# Background TTS Worker Dockerfile
+# ─────────────────────────────────────────────────────────────
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    espeak-ng \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN useradd -u 10001 -m -s /bin/sh appuser
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
+
+COPY app/ app/
+COPY workers/ workers/
+COPY scripts/ scripts/
+
+RUN mkdir -p /app/generated_audio /app/logs /app/models && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+CMD ["python", "workers/tts_worker.py"]

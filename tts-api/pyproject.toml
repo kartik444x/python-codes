@@ -1,0 +1,136 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "tts-api"
+version = "1.0.0"
+description = "Production-ready Text-to-Speech REST API powered by Kokoro-82M"
+authors = [{ name = "TTS API Team" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+keywords = ["text-to-speech", "tts", "ai", "api", "fastapi", "kokoro"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+[project.urls]
+Repository = "https://github.com/your-org/tts-api"
+Documentation = "http://localhost:8000/docs"
+
+# ─────────────────────────────────────────────────────────────
+# Core runtime dependencies
+# Rationale for each is documented inline.
+# ─────────────────────────────────────────────────────────────
+[project.dependencies]
+# Web framework
+fastapi = ">=0.115.0,<1.0"          # Mature ASGI framework; 0.115+ has full Pydantic v2 support
+uvicorn = {extras = ["standard"], version = ">=0.30.0,<1.0"}  # ASGI server with websocket + httptools
+# Data validation
+pydantic = ">=2.7.0,<3.0"           # v2 for performance; required by FastAPI 0.115+
+pydantic-settings = ">=2.3.0,<3.0"  # Settings management from env vars / .env files
+python-multipart = ">=0.0.9"         # Required for FastAPI file upload support
+# ML / TTS
+torch = ">=2.2.0"                    # PyTorch 2.x; required by Kokoro
+kokoro = ">=0.9.4"                   # Kokoro-82M TTS library (hexgrad)
+misaki = {extras = ["en"], version = ">=0.9.4"}  # G2P library for English phonemization
+soundfile = ">=0.12.1"               # WAV read/write via libsndfile; BSD-3 licensed
+numpy = ">=1.26.0,<3.0"             # Array ops for audio; required by soundfile + torch
+# Audio processing
+pydub = ">=0.25.1"                   # MP3 conversion (requires ffmpeg system binary)
+scipy = ">=1.13.0"                   # Audio resampling, normalization
+# Database
+sqlalchemy = ">=2.0.0,<3.0"         # ORM; v2 has async support
+alembic = ">=1.13.0"                 # Database migrations
+aiosqlite = ">=0.20.0"              # Async SQLite driver (dev)
+asyncpg = ">=0.29.0"                # Async PostgreSQL driver (production)
+# Caching / Queue
+redis = {extras = ["hiredis"], version = ">=5.0.0"}  # Redis client; hiredis for performance
+rq = ">=1.16.0"                      # Redis Queue — simpler than Celery for this use case
+# HTTP utilities
+httpx = ">=0.27.0"                   # Async HTTP client (for health checks, SDK)
+# Security
+passlib = {extras = ["bcrypt"], version = ">=1.7.4"}  # API key hashing
+python-jose = {extras = ["cryptography"], version = ">=3.3.0"}  # JWT (future auth extension)
+# Observability
+prometheus-client = ">=0.20.0"       # /metrics endpoint for Prometheus scraping
+structlog = ">=24.1.0"               # Structured JSON logging
+# Utilities
+python-dotenv = ">=1.0.0"           # .env file loading
+anyio = ">=4.4.0"                    # Async primitive compatibility (FastAPI dep)
+aiofiles = ">=23.2.0"               # Async file I/O for streaming audio responses
+tenacity = ">=8.3.0"                 # Retry logic for model loading + storage ops
+ulid-py = ">=1.1.0"                  # ULID generation for request IDs (sortable, URL-safe)
+# Rate limiting
+slowapi = ">=0.1.9"                  # FastAPI-compatible rate limiter (wraps limits)
+limits = ">=3.12.0"                  # Backend for slowapi
+
+[project.optional-dependencies]
+# S3-compatible storage (optional)
+s3 = ["boto3>=1.34.0"]
+# Japanese language support
+ja = ["misaki[ja]>=0.9.4"]
+# Chinese language support
+zh = ["misaki[zh]>=0.9.4"]
+
+# Development dependencies
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.27.0",           # TestClient
+    "factory-boy>=3.3.0",
+    "faker>=25.0.0",
+    "ruff>=0.4.0",             # Linting + formatting
+    "mypy>=1.10.0",
+    "types-redis>=4.6.0",
+    "pre-commit>=3.7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "workers*"]
+
+# ─────────────────────────────────────────────────────────────
+# Tool configurations
+# ─────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "scripts/*", "workers/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstract",
+]

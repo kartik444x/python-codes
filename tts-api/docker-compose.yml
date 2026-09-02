@@ -1,0 +1,87 @@
+services:
+  # ── FastAPI Application Service ────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tts-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - API_KEY_REQUIRED=true
+      - TTS_DEVICE=cpu
+      - DATABASE_URL=postgresql+asyncpg://tts_user:tts_password@postgres:5432/tts_db
+      - REDIS_URL=redis://redis:6379/0
+      - CACHE_BACKEND=redis
+      - STORAGE_BACKEND=local
+      - AUDIO_DIR=/app/generated_audio
+    volumes:
+      - tts_audio_data:/app/generated_audio
+      - tts_model_cache:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Asynchronous Background TTS Worker ─────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: tts-worker
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - TTS_DEVICE=cpu
+      - DATABASE_URL=postgresql+asyncpg://tts_user:tts_password@postgres:5432/tts_db
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_BACKEND=local
+      - AUDIO_DIR=/app/generated_audio
+    volumes:
+      - tts_audio_data:/app/generated_audio
+      - tts_model_cache:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── PostgreSQL Database ────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: tts-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tts_db
+      POSTGRES_USER: tts_user
+      POSTGRES_PASSWORD: tts_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tts_user -d tts_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis Cache & Task Queue ───────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: tts-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  tts_audio_data:
+  tts_model_cache:
